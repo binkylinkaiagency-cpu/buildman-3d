@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Link AI Agency — 3D Logo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #ffffff; overflow: hidden; }
+    canvas { display: block; }
+    #hint {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      font-family: Arial, sans-serif; font-size: 12px; color: #999;
+      letter-spacing: 1px; text-transform: uppercase; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="hint">Drag to rotate · Scroll to zoom</div>
+
+  <script type="importmap">
+    { "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    } }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls }  from 'three/addons/controls/OrbitControls.js';
+    import { FontLoader }     from 'three/addons/loaders/FontLoader.js';
+    import { TextGeometry }   from 'three/addons/geometries/TextGeometry.js';
+
+    // ── Renderer ──────────────────────────────────────────────────────────
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0xffffff);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    document.body.appendChild(renderer.domElement);
+
+    // ── Scene / Camera ────────────────────────────────────────────────────
+    const scene  = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0.3, 10);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.enablePan = false;
+    controls.minDistance = 5;
+    controls.maxDistance = 18;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 1.2;
+
+    // ── Lighting ──────────────────────────────────────────────────────────
+    scene.add(new THREE.AmbientLight(0xffffff, 1.6));
+
+    const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+    sun.position.set(4, 8, 6);
+    sun.castShadow = true;
+    scene.add(sun);
+
+    const rimLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    rimLight.position.set(-5, -3, -4);
+    scene.add(rimLight);
+
+    // Purple glow — the signature light for the chain link
+    const purpleLight = new THREE.PointLight(0x9b6dff, 6, 8);
+    purpleLight.position.set(0, 0, 2);
+    scene.add(purpleLight);
+
+    const purpleLight2 = new THREE.PointLight(0xb48eff, 3, 10);
+    purpleLight2.position.set(0, 1, -1);
+    scene.add(purpleLight2);
+
+    // ── Materials ─────────────────────────────────────────────────────────
+    const darkMat = new THREE.MeshStandardMaterial({
+      color: 0x111111,
+      metalness: 0.1,
+      roughness: 0.4,
+    });
+
+    const chromeMat = new THREE.MeshStandardMaterial({
+      color: 0xdde0ff,
+      metalness: 1.0,
+      roughness: 0.05,
+      envMapIntensity: 2.0,
+    });
+
+    // ── Load font and build scene ─────────────────────────────────────────
+    const fontLoader = new FontLoader();
+    fontLoader.load(
+      'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/fonts/helvetiker_bold.typeface.json',
+      (font) => {
+        const size  = 1.6;
+        const depth = 0.3;
+        const bevel = { enabled: true, thickness: 0.04, size: 0.02, segments: 4 };
+
+        function makeText(str) {
+          return new TextGeometry(str, {
+            font, size, height: depth,
+            curveSegments: 12,
+            bevelEnabled: true,
+            bevelThickness: bevel.thickness,
+            bevelSize:      bevel.size,
+            bevelSegments:  bevel.segments,
+          });
+        }
+
+        // Measure to center everything
+        const group = new THREE.Group();
+
+        // -- "L" --
+        const geoL = makeText('L');
+        geoL.computeBoundingBox();
+        const wL = geoL.boundingBox.max.x - geoL.boundingBox.min.x;
+        const meshL = new THREE.Mesh(geoL, darkMat);
+        meshL.castShadow = true;
+        group.add(meshL);
+
+        // -- "N" --
+        const geoN = makeText('N');
+        geoN.computeBoundingBox();
+        const wN = geoN.boundingBox.max.x - geoN.boundingBox.min.x;
+
+        // -- "K" --
+        const geoK = makeText('K');
+        geoK.computeBoundingBox();
+        const wK = geoK.boundingBox.max.x - geoK.boundingBox.min.x;
+
+        // Chain link width estimate
+        const chainW = size * 1.0;
+        const gap    = size * 0.06;
+
+        // Total width of "LINK"
+        const totalW = wL + gap + chainW + gap + wN + gap + wK;
+
+        // Position each letter
+        let xCursor = -totalW / 2;
+
+        meshL.position.set(xCursor, 0, 0);
+        xCursor += wL + gap;
+
+        // Chain link at "I" position
+        const chainX = xCursor + chainW / 2;
+        xCursor += chainW + gap;
+
+        const meshN = new THREE.Mesh(geoN, darkMat);
+        meshN.castShadow = true;
+        meshN.position.set(xCursor, 0, 0);
+        group.add(meshN);
+        xCursor += wN + gap;
+
+        const meshK = new THREE.Mesh(geoK, darkMat);
+        meshK.castShadow = true;
+        meshK.position.set(xCursor, 0, 0);
+        group.add(meshK);
+
+        // -- Chain link (two interlocked tori) --
+        const chainGroup = new THREE.Group();
+
+        const torusR = size * 0.38;
+        const tubeR  = size * 0.09;
+
+        // Top link — horizontal
+        const torus1 = new THREE.Mesh(
+          new THREE.TorusGeometry(torusR, tubeR, 20, 60),
+          chromeMat
+        );
+        torus1.rotation.x = Math.PI / 2;
+        torus1.position.y = torusR * 0.7;
+        torus1.castShadow = true;
+        chainGroup.add(torus1);
+
+        // Bottom link — vertical (interlocked)
+        const torus2 = new THREE.Mesh(
+          new THREE.TorusGeometry(torusR, tubeR, 20, 60),
+          chromeMat
+        );
+        torus2.rotation.y = Math.PI / 2;
+        torus2.position.y = -torusR * 0.7;
+        torus2.castShadow = true;
+        chainGroup.add(torus2);
+
+        chainGroup.position.set(chainX, size * 0.45, 0.1);
+        group.add(chainGroup);
+
+        // -- "AI AGENCY" --
+        const geoSub = makeText('AI AGENCY');
+        geoSub.computeBoundingBox();
+        const wSub = geoSub.boundingBox.max.x - geoSub.boundingBox.min.x;
+        const meshSub = new THREE.Mesh(geoSub, darkMat);
+        meshSub.castShadow = true;
+
+        // Scale sub text to match total width
+        const subScale = totalW / wSub * 0.98;
+        meshSub.scale.set(subScale, subScale, 1);
+        meshSub.position.set(-totalW / 2, -size * 1.18, 0);
+        group.add(meshSub);
+
+        // -- Drop shadow plane --
+        const shadowPlane = new THREE.Mesh(
+          new THREE.PlaneGeometry(totalW * 1.4, 1),
+          new THREE.MeshBasicMaterial({ color: 0xdddddd, transparent: true, opacity: 0.5 })
+        );
+        shadowPlane.rotation.x = -Math.PI / 2;
+        shadowPlane.position.set(0, -size * 1.5, 0);
+        group.add(shadowPlane);
+
+        scene.add(group);
+
+        // ── Animate ───────────────────────────────────────────────────────
+        const clock = new THREE.Clock();
+
+        function animate() {
+          requestAnimationFrame(animate);
+          const t = clock.getElapsedTime();
+
+          controls.update();
+
+          // Float
+          group.position.y = Math.sin(t * 0.8) * 0.06;
+
+          // Chain link slow self-spin
+          chainGroup.rotation.z = t * 0.5;
+
+          // Purple light pulse
+          purpleLight.intensity = 5 + Math.sin(t * 2.0) * 1.5;
+          purpleLight.position.x = Math.sin(t * 0.6) * 0.5;
+          purpleLight.position.y = Math.cos(t * 0.6) * 0.5 + 0.5;
+
+          renderer.render(scene, camera);
+        }
+        animate();
+      }
+    );
+
+    // ── Resize ────────────────────────────────────────────────────────────
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
