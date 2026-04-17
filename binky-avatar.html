@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Binky — 3D Avatar</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #ffffff; overflow: hidden; font-family: Arial, sans-serif; }
+    canvas { display: block; }
+    #label {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      text-align: center; pointer-events: none;
+    }
+    #label h2 { font-size: 22px; font-weight: 800; letter-spacing: 3px; color: #111; text-transform: uppercase; }
+    #label p  { font-size: 11px; color: #999; letter-spacing: 2px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div id="label">
+    <h2>BINKY</h2>
+    <p>AI AGENT · LINK AI AGENCY · BALI</p>
+  </div>
+
+  <script type="importmap">
+    { "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    }}
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0xffffff);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    document.body.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+
+    const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0.5, 7);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.enablePan = false;
+    controls.minDistance = 3;
+    controls.maxDistance = 12;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 1.5;
+
+    // Lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+    sun.position.set(3, 6, 4); sun.castShadow = true;
+    scene.add(sun);
+    const rim = new THREE.DirectionalLight(0xc0d0ff, 0.8);
+    rim.position.set(-4, -2, -3);
+    scene.add(rim);
+    // Purple accent — Binky's color
+    const purp = new THREE.PointLight(0x9b6dff, 4, 10);
+    purp.position.set(0, 2, 3);
+    scene.add(purp);
+
+    // Materials
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, metalness: 0.3, roughness: 0.5 });
+    const faceMat = new THREE.MeshStandardMaterial({ color: 0x16213e, metalness: 0.1, roughness: 0.4 });
+    const screenMat = new THREE.MeshStandardMaterial({ color: 0x9b6dff, emissive: 0x6a3dcc, emissiveIntensity: 0.8, metalness: 0, roughness: 0.2 });
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 1.0 });
+    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x9b6dff, emissive: 0x6a2dff, emissiveIntensity: 2.0 });
+    const accentMat = new THREE.MeshStandardMaterial({ color: 0x9b6dff, metalness: 0.6, roughness: 0.2, emissive: 0x4a1daa, emissiveIntensity: 0.3 });
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xdde0ff, metalness: 0.95, roughness: 0.05 });
+    const antennaMat = new THREE.MeshStandardMaterial({ color: 0x888899, metalness: 0.8, roughness: 0.2 });
+
+    const avatar = new THREE.Group();
+
+    // ── Body ──────────────────────────────────────────────────────────────
+    // Rounded box body
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.8, 1.0, 2, 2, 2), bodyMat);
+    body.castShadow = true;
+    avatar.add(body);
+
+    // Body accent stripe
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.12, 1.02), accentMat);
+    stripe.position.y = 0.3;
+    avatar.add(stripe);
+
+    // ── Head ─────────────────────────────────────────────────────────────
+    const head = new THREE.Group();
+    head.position.y = 1.35;
+
+    const headBase = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 1.0), faceMat);
+    headBase.castShadow = true;
+    head.add(headBase);
+
+    // Face screen (the purple display)
+    const screen = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.8, 0.05), screenMat);
+    screen.position.set(0, 0.05, 0.53);
+    head.add(screen);
+
+    // Eyes on screen
+    const eyeGeo = new THREE.SphereGeometry(0.12, 16, 16);
+    const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
+    eye1.position.set(-0.22, 0.08, 0.56);
+    eye1.scale.set(1, 1.1, 0.4);
+    head.add(eye1);
+
+    const eye2 = new THREE.Mesh(eyeGeo, eyeMat);
+    eye2.position.set(0.22, 0.08, 0.56);
+    eye2.scale.set(1, 1.1, 0.4);
+    head.add(eye2);
+
+    // Pupils
+    const pupilGeo = new THREE.SphereGeometry(0.07, 16, 16);
+    const p1 = new THREE.Mesh(pupilGeo, pupilMat);
+    p1.position.set(-0.22, 0.08, 0.60);
+    p1.scale.z = 0.3;
+    head.add(p1);
+
+    const p2 = new THREE.Mesh(pupilGeo, pupilMat);
+    p2.position.set(0.22, 0.08, 0.60);
+    p2.scale.z = 0.3;
+    head.add(p2);
+
+    // Mouth — small smile using thin boxes
+    for (let i = -1; i <= 1; i++) {
+      const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.04), eyeMat);
+      tooth.position.set(i * 0.14, -0.18, 0.565);
+      tooth.rotation.z = i * 0.15;
+      head.add(tooth);
+    }
+
+    // Ear panels
+    [-1, 1].forEach(side => {
+      const ear = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.6), accentMat);
+      ear.position.set(side * 0.8, 0.1, 0);
+      head.add(ear);
+      // Knob on ear
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 12), chromeMat);
+      knob.position.set(side * 0.86, 0.2, 0);
+      head.add(knob);
+    });
+
+    // Antenna
+    const antStick = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 8), antennaMat);
+    antStick.position.set(0, 0.85, 0);
+    head.add(antStick);
+    const antBall = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 16), accentMat);
+    antBall.position.set(0, 1.12, 0);
+    head.add(antBall);
+
+    avatar.add(head);
+
+    // ── Arms ─────────────────────────────────────────────────────────────
+    [-1, 1].forEach(side => {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.1, 0.3), bodyMat);
+      arm.position.set(side * 1.05, 0.1, 0);
+      arm.castShadow = true;
+      avatar.add(arm);
+
+      // Hand
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), chromeMat);
+      hand.position.set(side * 1.05, -0.55, 0);
+      hand.scale.set(1, 0.8, 0.8);
+      avatar.add(hand);
+    });
+
+    // ── Legs ─────────────────────────────────────────────────────────────
+    [-0.35, 0.35].forEach(xOff => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.7, 0.4), bodyMat);
+      leg.position.set(xOff, -1.25, 0);
+      leg.castShadow = true;
+      avatar.add(leg);
+
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.6), accentMat);
+      foot.position.set(xOff, -1.7, 0.1);
+      avatar.add(foot);
+    });
+
+    // ── "B" emblem on chest ───────────────────────────────────────────────
+    const emblem = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.22, 0.22, 0.04, 32),
+      accentMat
+    );
+    emblem.rotation.x = Math.PI / 2;
+    emblem.position.set(0, -0.3, 0.52);
+    avatar.add(emblem);
+
+    const emblemLetter = new THREE.Mesh(
+      new THREE.TorusGeometry(0.1, 0.035, 8, 24, Math.PI),
+      eyeMat
+    );
+    emblemLetter.position.set(-0.02, -0.3, 0.56);
+    emblemLetter.rotation.z = Math.PI / 2;
+    avatar.add(emblemLetter);
+
+    // Shadow ground
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 1 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -2.1;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    scene.add(avatar);
+
+    // ── Animate ───────────────────────────────────────────────────────────
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+      controls.update();
+
+      // Float
+      avatar.position.y = Math.sin(t * 1.1) * 0.06;
+
+      // Head slight nod
+      head.rotation.x = Math.sin(t * 0.8) * 0.04;
+      head.rotation.y = Math.sin(t * 0.6) * 0.06;
+
+      // Eyes blink every ~3s
+      const blink = Math.abs(Math.sin(t * 0.9)) < 0.04 ? 0.1 : 1.1;
+      eye1.scale.y = blink;
+      eye2.scale.y = blink;
+
+      // Antenna bob
+      antBall.position.y = 1.12 + Math.sin(t * 2.5) * 0.03;
+
+      // Purple light pulse
+      purp.intensity = 3.5 + Math.sin(t * 2.0) * 0.8;
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
