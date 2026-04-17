@@ -162,31 +162,43 @@
         meshK.position.set(xCursor, 0, 0);
         group.add(meshK);
 
-        // -- Chain link (two interlocked tori) --
+        // -- Chain link: two OVAL links that thread through each other --
         const chainGroup = new THREE.Group();
 
-        const torusR = size * 0.34;
-        const tubeR  = size * 0.075;
+        // Oval curve function (stadium/paperclip shape)
+        function ovalCurve(rx, ry, segs = 80) {
+          const pts = [];
+          for (let i = 0; i <= segs; i++) {
+            const t = (i / segs) * Math.PI * 2;
+            pts.push(new THREE.Vector3(rx * Math.cos(t), ry * Math.sin(t), 0));
+          }
+          return new THREE.CatmullRomCurve3(pts, true);
+        }
 
-        // Ring 1 — horizontal (lying flat, XZ plane)
-        const torus1 = new THREE.Mesh(
-          new THREE.TorusGeometry(torusR, tubeR, 20, 64),
-          chromeMat
-        );
-        torus1.rotation.x = Math.PI / 2; // flat, XZ plane
-        torus1.position.y = torusR * 0.55;
-        torus1.castShadow = true;
-        chainGroup.add(torus1);
+        const lrx  = size * 0.38; // oval long radius
+        const lry  = size * 0.22; // oval short radius
+        const tubeR = size * 0.065;
+        const curve = ovalCurve(lrx, lry);
+        const linkGeo = new THREE.TubeGeometry(curve, 80, tubeR, 12, true);
 
-        // Ring 2 — vertical (standing up, XY plane) — passes through ring 1
-        const torus2 = new THREE.Mesh(
-          new THREE.TorusGeometry(torusR, tubeR, 20, 64),
-          chromeMat
-        );
-        // Default torus is in XY plane (vertical circle) — no rotation needed
-        torus2.position.y = -torusR * 0.55;
-        torus2.castShadow = true;
-        chainGroup.add(torus2);
+        // Both links tilted ~45° (same diagonal direction as in the logo)
+        const tilt = -Math.PI / 4;
+
+        // Link 1 — faces the viewer (in XY plane, tilted -45°)
+        const link1 = new THREE.Mesh(linkGeo, chromeMat);
+        link1.rotation.z = tilt;
+        // Offset toward top-right
+        link1.position.set( lry * 0.6,  lry * 0.6, 0.05);
+        link1.castShadow = true;
+        chainGroup.add(link1);
+
+        // Link 2 — faces sideways (rotated 90° on Y, same tilt), threads through link1
+        const link2 = new THREE.Mesh(linkGeo, chromeMat);
+        link2.rotation.set(0, Math.PI / 2, tilt); // sideways + same diagonal tilt
+        // Offset toward bottom-left
+        link2.position.set(-lry * 0.6, -lry * 0.6, 0);
+        link2.castShadow = true;
+        chainGroup.add(link2);
 
         chainGroup.position.set(chainX, size * 0.45, 0.1);
         group.add(chainGroup);
