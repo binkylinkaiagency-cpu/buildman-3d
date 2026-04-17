@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buildman — 3D Logo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d1117; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+    canvas { display: block; }
+
+    #ui {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 10;
+    }
+    .btn {
+      padding: 10px 24px;
+      border-radius: 6px;
+      border: 1px solid rgba(201,160,90,0.3);
+      background: rgba(13,17,23,0.8);
+      color: #c9a05a;
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.2s;
+    }
+    .btn:hover { background: rgba(201,160,90,0.15); border-color: #c9a05a; }
+    .btn.active { background: rgba(201,160,90,0.2); border-color: #c9a05a; }
+
+    #label {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      pointer-events: none;
+    }
+    #label h1 {
+      font-size: clamp(28px, 5vw, 56px);
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      color: #1a2744;
+      text-shadow: 0 0 60px rgba(201,160,90,0.15), 2px 2px 0 rgba(0,0,0,0.5);
+      font-family: 'Arial Black', Arial, sans-serif;
+    }
+    #label p {
+      font-size: clamp(10px, 1.5vw, 14px);
+      letter-spacing: 0.35em;
+      color: rgba(201,160,90,0.6);
+      margin-top: 6px;
+      font-weight: 400;
+    }
+  </style>
+</head>
+<body>
+  <div id="label">
+    <h1>BUILDMAN</h1>
+    <p>AANNEMERSBEDRIJF</p>
+  </div>
+
+  <div id="ui">
+    <button class="btn active" id="btn-rotate" onclick="toggleRotate()">⟳ Rotate</button>
+    <button class="btn" id="btn-explode" onclick="toggleExplode()">◈ Explode</button>
+  </div>
+
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+                   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/" } }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ── Scene setup ──────────────────────────────────────────────────────
+    const scene    = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1117);
+    scene.fog        = new THREE.FogExp2(0x0d1117, 0.04);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    document.body.appendChild(renderer.domElement);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 7);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.enablePan = false;
+    controls.minDistance = 3;
+    controls.maxDistance = 14;
+
+    // ── Lighting ─────────────────────────────────────────────────────────
+    const ambientLight = new THREE.AmbientLight(0x1a2744, 0.4);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight(0xfff5e0, 2.5);
+    keyLight.position.set(3, 5, 4);
+    keyLight.castShadow = true;
+    scene.add(keyLight);
+
+    const rimLight = new THREE.DirectionalLight(0xc9a05a, 1.2);
+    rimLight.position.set(-4, -2, -3);
+    scene.add(rimLight);
+
+    const fillLight = new THREE.PointLight(0xc9a05a, 0.8, 20);
+    fillLight.position.set(0, 0, 5);
+    scene.add(fillLight);
+
+    // ── Materials ─────────────────────────────────────────────────────────
+    const goldMat = new THREE.MeshStandardMaterial({
+      color: 0xc9a05a,
+      metalness: 0.85,
+      roughness: 0.2,
+      envMapIntensity: 1.5,
+    });
+
+    const goldMat2 = goldMat.clone();
+    goldMat2.color.set(0xe8c07a);
+
+    const goldMat3 = goldMat.clone();
+    goldMat3.color.set(0xb08840);
+
+    // ── Build the "B" mark — 3 curved stripe layers ───────────────────────
+    // The Buildman B mark = 3 horizontal curved stripes stacked, forming a B
+    // Each stripe: a flat arc that curves to the right
+
+    function makeStripe(yOffset, arcAngle, depth, matIndex) {
+      const shape = new THREE.Shape();
+      const thickness = 0.09;
+      const innerR = 0.55;
+      const outerR = innerR + thickness;
+
+      // Left vertical connector
+      shape.moveTo(-0.9, -thickness / 2);
+      shape.lineTo(-0.9,  thickness / 2);
+      shape.lineTo(-innerR,  thickness / 2);
+
+      // Outer arc (right side curves)
+      const startAngle = -Math.PI * arcAngle;
+      const endAngle   =  Math.PI * arcAngle;
+
+      const pts = [];
+      const N = 32;
+      for (let i = 0; i <= N; i++) {
+        const a = startAngle + (endAngle - startAngle) * (i / N);
+        pts.push(new THREE.Vector2(Math.cos(a) * outerR * 0.9, Math.sin(a) * outerR + yOffset * 0.001));
+      }
+      shape.lineTo(pts[0].x, pts[0].y - yOffset * 0.001);
+      pts.forEach(p => shape.lineTo(p.x, p.y));
+
+      shape.lineTo(-innerR, -thickness / 2);
+      shape.closePath();
+
+      // Simpler approach — use actual flat arc shape
+      return null;
+    }
+
+    // Better approach: model each stripe as a curved flat extruded path
+    function makeArcStripe(yPos, radiusScale, mats, color) {
+      const group = new THREE.Group();
+      const mat   = new THREE.MeshStandardMaterial({
+        color,
+        metalness: 0.9,
+        roughness: 0.15,
+      });
+
+      // Horizontal bar (left side)
+      const barLen = 0.5 + 0.1 * radiusScale;
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(barLen, 0.1, 0.15),
+        mat
+      );
+      bar.position.set(-(0.6 - barLen / 2 + 0.05), yPos, 0);
+      group.add(bar);
+
+      // Arc (right side bump)
+      const R   = 0.28 * radiusScale;
+      const tW  = 0.1;
+      const tD  = 0.15;
+      const segs = 24;
+      for (let i = 0; i < segs; i++) {
+        const a0 = -Math.PI / 2 + (Math.PI * i) / segs;
+        const a1 = -Math.PI / 2 + (Math.PI * (i + 1)) / segs;
+        const x0 = Math.cos(a0) * R;
+        const y0 = Math.sin(a0) * R + yPos;
+        const x1 = Math.cos(a1) * R;
+        const y1 = Math.sin(a1) * R + yPos;
+
+        const cx = (x0 + x1) / 2;
+        const cy = (y0 + y1) / 2;
+        const len = Math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2);
+        const angle = Math.atan2(y1 - y0, x1 - x0);
+
+        const seg = new THREE.Mesh(
+          new THREE.BoxGeometry(len + 0.01, tW, tD),
+          mat
+        );
+        seg.position.set(cx + 0.1, cy, 0);
+        seg.rotation.z = angle;
+        group.add(seg);
+      }
+
+      return group;
+    }
+
+    // The B mark group
+    const bMark = new THREE.Group();
+
+    // Vertical spine (left)
+    const spineMat = new THREE.MeshStandardMaterial({ color: 0xb08840, metalness: 0.9, roughness: 0.2 });
+    const spine = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.1, 0.15), spineMat);
+    spine.position.set(-0.6, 0, 0);
+    bMark.add(spine);
+
+    // 3 arc stripes
+    const stripe1 = makeArcStripe( 0.38, 0.85, null, 0xe0b870);
+    const stripe2 = makeArcStripe( 0.00, 1.0,  null, 0xc9a05a);
+    const stripe3 = makeArcStripe(-0.38, 0.85, null, 0xb08840);
+
+    bMark.add(stripe1, stripe2, stripe3);
+    bMark.position.set(0.6, 0, 0);
+    scene.add(bMark);
+
+    // ── Ground reflection plane ──────────────────────────────────────────
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: 0x0d1117,
+      metalness: 0.3,
+      roughness: 0.8,
+    });
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // ── Particle field ───────────────────────────────────────────────────
+    const partGeo = new THREE.BufferGeometry();
+    const partCount = 800;
+    const partPos = new Float32Array(partCount * 3);
+    for (let i = 0; i < partCount * 3; i++) {
+      partPos[i] = (Math.random() - 0.5) * 18;
+    }
+    partGeo.setAttribute('position', new THREE.BufferAttribute(partPos, 3));
+    const partMat = new THREE.PointsMaterial({ color: 0xc9a05a, size: 0.015, transparent: true, opacity: 0.4 });
+    scene.add(new THREE.Points(partGeo, partMat));
+
+    // ── State ────────────────────────────────────────────────────────────
+    let rotating  = true;
+    let exploded  = false;
+    let explodeT  = 0;
+
+    window.toggleRotate = () => {
+      rotating = !rotating;
+      document.getElementById('btn-rotate').classList.toggle('active', rotating);
+    };
+
+    window.toggleExplode = () => {
+      exploded = !exploded;
+      document.getElementById('btn-explode').classList.toggle('active', exploded);
+    };
+
+    // ── Animation ────────────────────────────────────────────────────────
+    const clock = new THREE.Clock();
+    let rotY = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+      const dt = clock.getDelta();
+
+      controls.update();
+
+      if (rotating) {
+        rotY += 0.008;
+        bMark.rotation.y = rotY;
+      }
+
+      // Gentle float
+      bMark.position.y = Math.sin(t * 0.7) * 0.08;
+
+      // Explode mode: spread the stripes apart
+      const targetExplode = exploded ? 1 : 0;
+      explodeT += (targetExplode - explodeT) * 0.05;
+
+      stripe1.position.y = 0.38 * (1 + explodeT * 1.2);
+      stripe2.position.y = 0;
+      stripe3.position.y = -0.38 * (1 + explodeT * 1.2);
+
+      stripe1.position.z = explodeT * 0.4;
+      stripe2.position.z = 0;
+      stripe3.position.z = -explodeT * 0.4;
+
+      spine.scale.y = 1 + explodeT * 0.5;
+
+      // Gold shimmer on fill light
+      fillLight.intensity = 0.8 + Math.sin(t * 1.3) * 0.2;
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
