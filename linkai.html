@@ -165,26 +165,26 @@
         // -- Chain link (two interlocked tori) --
         const chainGroup = new THREE.Group();
 
-        const torusR = size * 0.38;
-        const tubeR  = size * 0.09;
+        const torusR = size * 0.34;
+        const tubeR  = size * 0.075;
 
-        // Top link — horizontal
+        // Ring 1 — horizontal (lying flat, XZ plane)
         const torus1 = new THREE.Mesh(
-          new THREE.TorusGeometry(torusR, tubeR, 20, 60),
+          new THREE.TorusGeometry(torusR, tubeR, 20, 64),
           chromeMat
         );
-        torus1.rotation.x = Math.PI / 2;
-        torus1.position.y = torusR * 0.7;
+        torus1.rotation.x = Math.PI / 2; // flat, XZ plane
+        torus1.position.y = torusR * 0.55;
         torus1.castShadow = true;
         chainGroup.add(torus1);
 
-        // Bottom link — vertical (interlocked)
+        // Ring 2 — vertical (standing up, XY plane) — passes through ring 1
         const torus2 = new THREE.Mesh(
-          new THREE.TorusGeometry(torusR, tubeR, 20, 60),
+          new THREE.TorusGeometry(torusR, tubeR, 20, 64),
           chromeMat
         );
-        torus2.rotation.y = Math.PI / 2;
-        torus2.position.y = -torusR * 0.7;
+        // Default torus is in XY plane (vertical circle) — no rotation needed
+        torus2.position.y = -torusR * 0.55;
         torus2.castShadow = true;
         chainGroup.add(torus2);
 
